@@ -59,4 +59,7 @@ fn recur_in_closure<'a>() -> impl Id + 'a {
 
 - eagerly normalize opaques in the old solver as well
     - https://github.com/rust-lang/rust/pull/120798
-        - blocked on `recur().alias_bound()` 
+        - blocked on `recur().alias_bound()`
+- merge `TypeVerifier` and `TypeChecker`
+- figure out why the canonical closure signature is not just a user type annotation.
+- eagerly create nll vars for late bound and then ICE on failing lookup
