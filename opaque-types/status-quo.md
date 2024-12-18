@@ -50,6 +50,8 @@ For each borrow we store its [`BorrowData`](https://github.com/rust-lang/rust/bl
 
 ### `nll::compute_regions`
 
+It starts by creating the `DenseLocationMap`, mapping from `Locations` - `block` and `statement` index - to a dense set of `PointIndex`.
+
 This starts by running the MIR type-checker. This first computes the the assumptions which are known to hold inside of the function.
 - `UniversalRegionRelations`
     - it wraps the already frozen `UniversalRegions` computed early on
@@ -69,10 +71,41 @@ After collecting all constraints by walking the body, we compute liveness inform
 
 As an optimization, we only compute liveness for locals where it may be relevant. We don't need to compute liveness information for locals referencing at least one region local to the body, i.e. which does not already outlive a free region. This is purely an optimization. This depends on the current state of the region constraint graph.
 
+---
+
 We then call `trace::trace`. For each local it computes all locations at which it needs to be live. This is done by walking the CFG backwards until any writes of the local as whether a local is live before being overwritten does not matter. We do so both for reads of the local, in which case it has to be *USE-LIVE*, and drops of the local, in which case it only has to be *DROP-LIVE*.
 
+It first builds a `LocalUseMap` by walking the body and collecting the list of definitions, uses, and drops of each relevant local.
 
-? it mutates on `typeck`
+`LivenessResults::compute_for_all_locals` then computes liveness for each individual relevant local as described above.
+
+---
+
+We then mark all regions as live in the location where they occur in the body. This is necessary for regions in the body which aren't used by any live locals.
+
+Finally we register member constraints for all opaque types in the storage at this point. More on these later. We then convert all regions mentioned by the opaque to nll vars.
+
+#### `RegionInferenceContext::new`
+
+We've now collected all constraints from this body and do the actual region solving. `RegionInferenceContext::new` starts by adding `'scc: 'static` constraints for all components which are required to outlive a placeholder.
+
+We then build the constraint graph and sccs for our region constraints.
+
+We finally compute the actual value for each scc, i.e. all locations, universal regions, and placeholders contained in the scc.
+
+We then map the nll vars of the member constraints to their sccs.
+
+Finally, we add the requirements of all free and placeholder regions. Free regions `X` have to be live at all locations in the body as well as the pseudo-location `end(X)`. We still rely on `liveness_constraints` for diagnostics, so we also consider sccs containing free regions to always be live.
+
+#### `RegionInferenceContext::solve`
+
+We now take these initial liveness constraints for each sccs and progate them in `RegionInferenceContext::propagate_constraints`. As this is a non-cyclic graph, this is a simple walk. We start with the largest scc which outlives every other scc. 
+
+In `RegionInferenceContext::compute_value_for_scc` we first propagate the constraints from all sccs outlived by the current one.
+
+We then apply all member constraints whose `member_region`  region is part of this scc. This does not check the member constraint itself, but in case there is a unique choice we mutate the constraint graph. If this modified the graph, we push it to the `member_constraints_applied` list.
+
+#### `RegionInferenceContext::infer_opaque_types`
 
 ## region assumptions
 
