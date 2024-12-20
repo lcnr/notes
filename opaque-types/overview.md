@@ -63,3 +63,9 @@ fn recur_in_closure<'a>() -> impl Id + 'a {
 - merge `TypeVerifier` and `TypeChecker`
 - figure out why the canonical closure signature is not just a user type annotation.
 - eagerly create nll vars for late bound and then ICE on failing lookup
+- remove `struct OpaqueTypeDecl`
+
+## Links
+
+- aliemjay min-choice PR: https://github.com/rust-lang/rust/pull/105300/
+- considering liveness for opaque-type captures: https://github.com/rust-lang/rust/pull/116040

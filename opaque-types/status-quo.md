@@ -99,11 +99,14 @@ Finally, we add the requirements of all free and placeholder regions. Free regio
 
 #### `RegionInferenceContext::solve`
 
-We now take these initial liveness constraints for each sccs and progate them in `RegionInferenceContext::propagate_constraints`. As this is a non-cyclic graph, this is a simple walk. We start with the largest scc which outlives every other scc. 
+We now take these initial liveness constraints for each sccs and progate them in `RegionInferenceContext::propagate_constraints`. As this is a non-cyclic graph, this is a simple walk. We start with the largest scc which outlives every other scc: given `A: B` we first check `B`, then `A`.
 
 In `RegionInferenceContext::compute_value_for_scc` we first propagate the constraints from all sccs outlived by the current one.
 
-We then apply all member constraints whose `member_region`  region is part of this scc. This does not check the member constraint itself, but in case there is a unique choice we mutate the constraint graph. If this modified the graph, we push it to the `member_constraints_applied` list.
+We then apply all member constraints `'member_region in choice_regions` where `'member_region` is part of this scc. This does not check the member constraint itself, but in case there is a unique choice we mutate the constraint graph by equating `'member_region` with that lifetime. More on that separately.
+
+For such region, we then add a the constraint `'member_region: 'c`. If this modified the graph, we push it to the `member_constraints_applied` list. This is only used to build a constraint path for diagnostics.
+
 
 #### `RegionInferenceContext::infer_opaque_types`
 
@@ -116,3 +119,17 @@ Type outlives are stored both in `region_bound_pairs` and in `known_type_outlive
 The `region_bound_pairs` only contain already destructured type outlives only added in `UniversalRegionRelationsBuilder::add_outlives_bound` and `OutlivesEnvironment::with_bounds`. It is only ever used for type outlives constraints from implied bounds.
 
 The `known_type_outlives_obligations` only contain the explicit outlives constraints from the `param_env`. We must not desugar outlives bounds from the environment as otherwise `where &'a &'b: 'c` would imply `'b: 'a` without this getting checked by the user.
+
+## member constraints
+
+Given a member constraint `'m in ['c0, 'c1, 'static]` we have to equate `'m` with one of the choice regions as this is necessary for us to name `'m` in the final `type_of` the opaque. While we could avoid equality by introducing `glb` or `lub` regions, all regions used by the opaque must be uniquely constrained by its params.
+
+We want the impact of this to be a small as possible, by adding the weakest constraints necessary. It is only possible to add additional outlives constraints, discarding existing ones is unsound.
+
+Given that the choice region will have to be a free region and the only additional errors we can get from using a suboptimal one are due to missing `universal_region_relations`.
+
+We filter the choice regions `'c` to regions which are larger than `'m`. For all universal regions `'lower` with `'m: 'lower`, we require the assumption `'c: 'lower`.
+
+We also have to make sure that the equality constraints on `'m` does not introduce any new outlives constraints between free regions. FOr everything that's currently larger than `'m`, make sure it's also larger than the `'c`. For all free regions `'upper` with `'upper: 'm`, we require the assumption `'upper: 'c`. We later constraining `'m: 'c` each `'upper: 'm` results in a transitive `'upper: 'c` bound.
+
+We then take use the smallest unique choice region `'c`.
