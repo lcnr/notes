@@ -103,7 +103,7 @@ We now take these initial liveness constraints for each sccs and progate them in
 
 In `RegionInferenceContext::compute_value_for_scc` we first propagate the constraints from all sccs outlived by the current one.
 
-We then apply all member constraints `'member_region in choice_regions` where `'member_region` is part of this scc. This does not check the member constraint itself, but in case there is a unique choice we mutate the constraint graph by equating `'member_region` with that lifetime. More on that separately.
+We then apply all member constraints `'member_region in choice_regions` where `'member_region` is part of this scc via `RegionInferenceContext::apply_member_constraint`. This does not check the member constraint itself, but in case there is a unique choice we mutate the constraint graph by equating `'member_region` with that lifetime. More on that separately.
 
 For such region, we then add a the constraint `'member_region: 'c`. If this modified the graph, we push it to the `member_constraints_applied` list. This is only used to build a constraint path for diagnostics.
 
@@ -116,6 +116,10 @@ They are proven using `RegionInferenceContext::eval_verify_bound`. If that fails
 ---
 
 `RegionInferenceContext::check_universal_regions` makes sure that region inference didn't add any additional outlives bounds between free regions. This also checks that placeholders were not unified with any other regions. For each universal region this checks all other universals it is required to outlive. If it is not implied by the `universal_region_relations`, we again try to promote this constraint to the parent as explained in [the dev-guide][closure-constraints].
+
+---
+
+`RegionInferenceContext::check_member_constraints` checks that all the member constraints hold. This is simpler than `RegionInferenceContext::apply_member_constraint` as it now simply asserts that the member region is equal to one of the choice regions.
 
 With this we've now finished computing regions.
 
