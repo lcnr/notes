@@ -122,13 +122,13 @@ The `known_type_outlives_obligations` only contain the explicit outlives constra
 
 ## member constraints
 
-Given a member constraint `'m in ['c0, 'c1, 'static]` we have to equate `'m` with one of the choice regions as this is necessary for us to name `'m` in the final `type_of` the opaque. While we could avoid equality by introducing `glb` or `lub` regions, all regions used by the opaque must be uniquely constrained by its params.
+Given a member constraint `'m in ['c0, 'c1, 'static]` we have to equate `'m` with one of the choice regions as this is necessary for us to name `'m` in the final `type_of` the opaque. While we could avoid equality by introducing `lub` regions, all regions used by the opaque must be uniquely constrained by its params.
 
-We want the impact of this to be a small as possible, by adding the weakest constraints necessary. It is only possible to add additional outlives constraints, discarding existing ones is unsound.
+We want to add the weakest constraints necessary to avoid unnecessary errors. We may only add additional outlives constraints, discarding existing ones is unsound.
 
-Given that the choice region will have to be a free region and the only additional errors we can get from using a suboptimal one are due to missing `universal_region_relations`.
+The choice region will have to be a free region. This means the only additional errors we can get from using a suboptimal one are due to missing `universal_region_relations`.
 
-We filter the choice regions `'c` to regions which are larger than `'m`. For all universal regions `'lower` with `'m: 'lower`, we require the assumption `'c: 'lower`.
+We filter the choice regions `'c` to regions which are larger than `'m`. For all universal regions `'lower` with `'m: 'lower`, we require the assumption `'c: 'lower`. Equating `'m` with an already smaller universal region does not work.
 
 We also have to make sure that the equality constraints on `'m` does not introduce any new outlives constraints between free regions. FOr everything that's currently larger than `'m`, make sure it's also larger than the `'c`. For all free regions `'upper` with `'upper: 'm`, we require the assumption `'upper: 'c`. We later constraining `'m: 'c` each `'upper: 'm` results in a transitive `'upper: 'c` bound.
 
