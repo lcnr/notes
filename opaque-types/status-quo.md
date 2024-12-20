@@ -130,6 +130,6 @@ The choice region will have to be a free region. This means the only additional 
 
 We filter the choice regions `'c` to regions which are larger than `'m`. For all universal regions `'lower` with `'m: 'lower`, we require the assumption `'c: 'lower`. Equating `'m` with an already smaller universal region does not work.
 
-We also have to make sure that the equality constraints on `'m` does not introduce any new outlives constraints between free regions. FOr everything that's currently larger than `'m`, make sure it's also larger than the `'c`. For all free regions `'upper` with `'upper: 'm`, we require the assumption `'upper: 'c`. We later constraining `'m: 'c` each `'upper: 'm` results in a transitive `'upper: 'c` bound.
+We also have to make sure that the equality constraints on `'m` does not introduce any new outlives constraints between free regions. For everything that's currently larger than `'m`, make sure it's also larger than the `'c`. For all free regions `'upper` with `'upper: 'm`, we require the assumption `'upper: 'c`. We later constraining `'m: 'c` each `'upper: 'm` results in a transitive `'upper: 'c` bound.
 
 We then take use the smallest unique choice region `'c`.
