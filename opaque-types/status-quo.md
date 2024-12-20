@@ -107,6 +107,19 @@ We then apply all member constraints `'member_region in choice_regions` where `'
 
 For such region, we then add a the constraint `'member_region: 'c`. If this modified the graph, we push it to the `member_constraints_applied` list. This is only used to build a constraint path for diagnostics.
 
+---
+
+Now that we've built the region constraint graph, we continue with `RegionInferenceContext::check_type_tests`. These `type_tests` are the parts of `TypeOutlives` requirements we were unable to destructure into region constraints. They often require disjunction. Because of this, we prove `type_tests` using the new frozen region constraint graph.
+
+They are proven using `RegionInferenceContext::eval_verify_bound`. If that fails inside of a closure, we try call `RegionInferenceContext::try_promote_type_test`, see [the dev-guide][closure-constraints]. If that also fails, we error.
+
+---
+
+`RegionInferenceContext::check_universal_regions` makes sure that region inference didn't add any additional outlives bounds between free regions. This also checks that placeholders were not unified with any other regions. For each universal region this checks all other universals it is required to outlive. If it is not implied by the `universal_region_relations`, we again try to promote this constraint to the parent as explained in [the dev-guide][closure-constraints].
+
+With this we've now finished computing regions.
+
+[closure-constraints]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/closure_constraints.html
 
 #### `RegionInferenceContext::infer_opaque_types`
 
