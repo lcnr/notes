@@ -23,6 +23,21 @@ trait Id: Sized {
     fn id(self) -> Self { self }
 }
 impl<T> Id for T {}
+fn recur(b: bool) -> impl Id {
+    if b {
+        let delay = recur(false);
+        delay.id()
+    } else {
+        1u32
+    }
+}
+```
+
+```rust
+trait Id: Sized {
+    fn id(self) -> Self { self }
+}
+impl<T> Id for T {}
 fn recur_in_closure() -> impl Id {
     let _ = || recur_in_closure().id();
     1u32
@@ -40,6 +55,13 @@ fn recur_in_closure<'a>() -> impl Id + 'a {
     #[cfg(unconstrained)]
     let _ = || recur_in_closure().id();
     1u32
+}
+```
+
+```rust
+fn define_in_closure<'a>() -> impl Sized + use<'a> {
+    let _ = || drop::<u32>(define_in_closure());
+    loop {}
 }
 ```
 
@@ -69,3 +91,4 @@ fn recur_in_closure<'a>() -> impl Id + 'a {
 
 - aliemjay min-choice PR: https://github.com/rust-lang/rust/pull/105300/
 - considering liveness for opaque-type captures: https://github.com/rust-lang/rust/pull/116040
+- eagerly normalize opaque types https://github.com/rust-lang/rust/pull/120798

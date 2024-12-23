@@ -117,15 +117,21 @@ They are proven using `RegionInferenceContext::eval_verify_bound`. If that fails
 
 `RegionInferenceContext::check_universal_regions` makes sure that region inference didn't add any additional outlives bounds between free regions. This also checks that placeholders were not unified with any other regions. For each universal region this checks all other universals it is required to outlive. If it is not implied by the `universal_region_relations`, we again try to promote this constraint to the parent as explained in [the dev-guide][closure-constraints].
 
+[closure-constraints]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/closure_constraints.html
+
 ---
 
 `RegionInferenceContext::check_member_constraints` checks that all the member constraints hold. This is simpler than `RegionInferenceContext::apply_member_constraint` as it now simply asserts that the member region is equal to one of the choice regions.
 
 With this we've now finished computing regions.
 
-[closure-constraints]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/closure_constraints.html
-
 #### `RegionInferenceContext::infer_opaque_types`
+
+This happens once we've computed the region graph after type checking. For every opaque type in the storage, we first compute the `arg_regions` of the opaque. These are all regions contained in its (captured) arguments and `'static`.
+
+It then maps all regions in the hidden type to these `arg_regions`, replacing them with `'erased` if they aren't present. This is correct as we've already checked the member constraints.
+
+We then call `fn infer_opaque_definition_from_instantiation`, mapping the generic parameters used in the defining scope to the parameters of the opaque. 
 
 ## region assumptions
 
