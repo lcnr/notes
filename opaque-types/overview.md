@@ -65,11 +65,51 @@ fn define_in_closure<'a>() -> impl Sized + use<'a> {
 }
 ```
 
+```rust
+fn tup_in_closure<'a, 'b>(x: &'a (), y: &'b ()) -> impl Sized {
+    let _ = || drop(tup_in_closure(x, y));
+    (x, y)
+}
+```
+
+We can likely break
+```rust
+trait ImplementedNoDefine: Sized {
+    fn method(self) {}
+}
+
+impl<T> ImplementedNoDefine for T {
+    fn method(self) {}
+}
+
+pub fn foo() -> impl Sized {
+    if false {
+        foo().method()
+    }
+}
+```
+
+test-ish
+```rust
+fn foo() -> impl Trait {
+  let a = Default::default();
+
+  if false {
+    return a.clone();
+  }
+
+  a.foo()
+}
+```
+
+- we must make sure that the external regions of the opaque are all unique, can't do this inside of the closure
+
 ## Goals
 
 - nested bodies may define opaque types
 - the root is the only thing checked by `type_of_opaque`
 - figure out how `recur().alias_bound()` should work in the new solver
+- figure out why borrowck is separate between closures and parent
 
 ## Current behavior
 
@@ -90,5 +130,6 @@ fn define_in_closure<'a>() -> impl Sized + use<'a> {
 ## Links
 
 - aliemjay min-choice PR: https://github.com/rust-lang/rust/pull/105300/
+- aliemjay general cleanup: https://github.com/rust-lang/rust/pull/116891
 - considering liveness for opaque-type captures: https://github.com/rust-lang/rust/pull/116040
 - eagerly normalize opaque types https://github.com/rust-lang/rust/pull/120798
