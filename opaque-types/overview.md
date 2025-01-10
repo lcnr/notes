@@ -89,6 +89,43 @@ pub fn foo() -> impl Sized {
 }
 ```
 
+We may want to break
+```rust
+use std::ops::Deref;
+struct Foo<T>(T);
+impl<T> Deref for Foo<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+impl<T> Foo<T> {
+    fn method(&self) {}
+}
+
+fn rpit() -> impl Sized {
+    if false {
+        let x = Foo(rpit());
+        x.method()
+    }
+}
+```
+and
+```rust
+trait Trait {
+    fn foo(self: &&Self) {}
+}
+
+impl Trait for u32 {}
+
+fn define() -> impl Sized {
+    if false {
+        define().foo(); // constrains `impl Sized` to `&_`
+    }
+    &1u32
+}
+```
+
 test-ish
 ```rust
 fn foo() -> impl Trait {
